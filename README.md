@@ -8,19 +8,19 @@
 
 A Python/Boto3 Infrastructure-as-Code (IaC) project that deploys, dynamically scales, and cleanly destroys a secure AWS web architecture using an event-driven automation model.
 
-==============================
+---
 
 ## Overview
 
 This project extends traditional infrastructure provisioning by integrating EventBridge and Lambda to dynamically scale workloads based on predefined schedules.
 
-Safety mechanisms included:
-- Failed scaling events routed to SQS
+**Safety mechanisms included:**
+- Failed scaling events routed to SQS (Dead Letter Queue)
 - Administrative alerts sent via SNS
 
-==============================
+---
 
-## Architecture Breakdown
+## Architecture
 
 ### High-Level Flow
 
@@ -33,6 +33,8 @@ EventBridge (Scheduled Triggers)
 SQS (Dead Letter Queue) ← Errors → SNS Alerts  
 
 ---
+
+## Architecture Breakdown
 
 ### Network Layer
 - Multi-AZ VPC  
@@ -52,19 +54,26 @@ SQS (Dead Letter Queue) ← Errors → SNS Alerts
 - SNS (notifications)  
 - SQS (dead-letter queue)  
 
-==============================
+---
 
 ## Key Features
 
-### Fault Tolerance and Chaos Testing
+### Fault Tolerance & Chaos Testing
 - Simulates IAM permission failures  
-- Validates error handling pipeline  
+- Validates full error-handling pipeline  
 
-Failure flow:
+**Failure flow:**
 1. Lambda fails to scale ASG  
 2. Error is handled gracefully  
 3. Payload pushed to SQS  
 4. SNS notification sent  
+
+**Trigger Chaos Test:**
+```python
+from automation.scale_asg import simulate_iam_failure
+
+simulate_iam_failure()
+```
 
 ---
 
@@ -76,26 +85,34 @@ Failure flow:
 
 ### Configuration Management
 - Centralized configuration via `config.yaml`  
-- Easily modify:
-  - CIDR ranges  
-  - Instance types  
-  - Scaling schedules  
+- Dynamically control infrastructure parameters  
+
+**Sample `config.yaml`:**
+```yaml
+aws_region: us-east-1
+vpc_cidr: 10.0.0.0/16
+instance_type: t3.medium
+asg_min: 1
+asg_max: 3
+```
 
 ---
 
 ### Automated Teardown
 - Clean resource deletion using `main_destroy.py`  
-- Handles dependencies such as:
+- Handles dependency order:
   - Load balancer draining  
   - Gateway detachment  
 - Prevents unnecessary AWS costs  
 
-==============================
+---
 
 ## Demonstration
 
 <details>
-<summary>Deployment Logs</summary>
+<summary><strong>Deployment Logs</strong></summary>
+
+Logs sourced from: `screenshots/deployment_logs.txt`
 
 ```text
 [INFO] Starting AWS infrastructure deployment...
@@ -108,7 +125,9 @@ Failure flow:
 </details>
 
 <details>
-<summary>Teardown Logs</summary>
+<summary><strong>Teardown Logs</strong></summary>
+
+Logs sourced from: `screenshots/teardown_logs.txt`
 
 ```text
 [INFO] Initiating teardown sequence...
@@ -122,16 +141,16 @@ Failure flow:
 
 ### Screenshots
 
-SQS Dead Letter Queue:  
+**SQS Dead Letter Queue:**  
 ![SQS DLQ](screenshots/sqs.png)
 
-SNS Notification:  
+**SNS Notification:**  
 ![SNS Alert](screenshots/sns.png)
 
-Architecture Diagram:  
+**Architecture Diagram:**  
 ![Architecture](screenshots/architecture.png)
 
-==============================
+---
 
 ## Project Structure
 
@@ -154,16 +173,17 @@ aws-autoscale-optimizer/
 │   ├── scale_asg.py
 │   └── TearDownLambdaEvent.py
 │
-└── utils/
-    └── config_loader.py
+├── utils/
+│   └── config_loader.py
 └── screenshots/
     ├── deployment_logs.txt
     ├── teardown_logs.txt
     ├── sqs.png
-    └── sns.png
+    ├── sns.png
+    └── architecture.png
 ```
 
-==============================
+---
 
 ## Getting Started
 
@@ -183,38 +203,62 @@ pip install -r requirements.txt
 ```
 
 ### Setup AWS Credentials
-Ensure you have authenticated your local environment with AWS using the CLI or environment variables:
+Ensure your local environment is authenticated with AWS:
+
 ```bash
 aws configure
 ```
-Or set credentials via environment variables:
+
+Or via environment variables:
+
 ```bash
 export AWS_ACCESS_KEY_ID=<your-access-key>
 export AWS_SECRET_ACCESS_KEY=<your-secret-key>
 export AWS_DEFAULT_REGION=us-east-1
 ```
 
+---
+
 ### Configure
-Edit `config.yaml` and set required values:  
+Edit `config.yaml` and update:
 - AWS region  
 - CIDR ranges  
-- Scaling schedules  
+- Scaling parameters  
+
+---
 
 ### Deploy
+
 ```bash
 python main_deploy.py
 ```
 
 After execution:
 - ALB DNS will be printed  
-- Access application via browser  
+- Access the application via browser  
+
+---
 
 ### Destroy
+
 ```bash
 python main_destroy.py
 ```
 
-==============================
+---
+
+## Design Decisions & Trade-offs
+
+While declarative tools like Terraform are standard for Infrastructure-as-Code, this project intentionally uses Python and Boto3 to:
+
+- Gain low-level control over AWS API interactions  
+- Understand dependency graphing during teardown  
+- Implement imperative state handling  
+- Build deeper intuition for AWS service orchestration  
+
+This approach trades off abstraction for control and learning depth.
+
+---
 
 ## Skills Demonstrated
 
@@ -222,15 +266,15 @@ python main_destroy.py
 - AWS automation using Python and Boto3  
 
 ### Event-Driven Systems
-- Scheduled scaling using EventBridge and Lambda  
+- Scheduled scaling with EventBridge and Lambda  
 
 ### Resilience Engineering
-- IAM least privilege enforcement  
-- SQS dead-letter queue and SNS alerting  
+- IAM least privilege design  
+- SQS dead-letter queues and SNS alerting  
 
 ### Engineering Practices
-- Idempotent scripts  
+- Idempotent scripting  
 - Modular architecture  
 - Dependency-aware teardown  
 
-==============================
+---
