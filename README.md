@@ -105,67 +105,6 @@ asg_max: 3
 
 ---
 
-## Demonstration
-
-<details>
-<summary>Deployment Logs</summary>
-
-![Deployment Logs](screenshots/deployment_logs.txt)
-
-</details>
-
-<details>
-<summary>Teardown Logs</summary>
-
-![Teardown Logs](screenshots/teardown_logs.txt)
-
-</details>
-
-### Screenshots
-**SQS Dead Letter Queue:**  
-![SQS DLQ](screenshots/sqs.png)
-
-**SNS Notification:**  
-![SNS Alert](screenshots/sns.png)
-
-**Architecture Diagram:**  
-![Architecture](screenshots/architecture.png)
-
----
-
-## Project Structure
-
-```text
-aws-autoscale-optimizer/
-├── config.yaml
-├── main_deploy.py
-├── main_destroy.py
-│
-├── network/
-│   ├── CreateNetwork.py
-│   └── TearDownNetwork.py
-│
-├── compute/
-│   ├── CreateCompute.py
-│   └── TearDownCompute.py
-│
-├── automation/
-│   ├── CreateLambdaEvent.py
-│   ├── scale_asg.py
-│   └── TearDownLambdaEvent.py
-│
-│── utils/
-│    └── config_loader.py
-└── screenshots/
-    ├── deployment_logs.txt
-    ├── teardown_logs.txt
-    ├── sqs.png
-    ├── sns.png
-    └── architecture.png
-```
-
----
-
 ## Getting Started
 
 ### Clone Repository
@@ -182,9 +121,15 @@ pip install -r requirements.txt
 ```
 
 ### Setup AWS Credentials
-Ensure you have authenticated your local environment with AWS using the CLI or environment variables:
+Ensure you have authenticated your local environment with AWS using the CLI or environment variables. This is required for the scripts to access AWS services:
 ```bash
 aws configure
+```
+You can also set credentials via environment variables:
+```bash
+export AWS_ACCESS_KEY_ID=<your-access-key>
+export AWS_SECRET_ACCESS_KEY=<your-secret-key>
+export AWS_DEFAULT_REGION=us-east-1
 ```
 
 ### Configure
