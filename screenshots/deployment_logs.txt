@@ -1,0 +1,37 @@
+(venv) root@Veronica:~/aws-autoscale-optimizer# python3 main_deploy.py
+Step 1: Starting Network Layer Initialization...
+2026-03-22 16:47:06 - INFO - INTENT: Creating VPC container (10.10.0.0/16)
+2026-03-22 16:47:09 - INFO - SUCCESS: Created VPC vpc-025c8093e1e9f7f23
+2026-03-22 16:47:09 - INFO - INTENT: Creating and attaching Internet Gateway
+2026-03-22 16:47:10 - INFO - SUCCESS: IGW igw-04a871973a9c8899f attached.
+2026-03-22 16:47:10 - INFO - INTENT: Configuring Public Subnets and Route Table
+2026-03-22 16:47:16 - INFO - SUCCESS: Public networking initialized.
+2026-03-22 16:47:16 - INFO - INTENT: Creating Highly Available NAT Gateways
+2026-03-22 16:47:21 - INFO - WAIT: Waiting for NAT availability...
+2026-03-22 16:49:09 - INFO - SUCCESS: NAT Gateways provisioned and available.
+2026-03-22 16:49:09 - INFO - INTENT: Configuring Private Subnets
+2026-03-22 16:49:14 - INFO - SUCCESS: Network Foundation Ready.
+
+Step 2: Starting Compute Layer Initialization...
+2026-03-22 16:49:17 - INFO - INTENT: Discovering Network Foundation (VPC & Subnets)
+2026-03-22 16:49:20 - INFO - SUCCESS: Discovered VPC vpc-025c8093e1e9f7f23 with required subnets.
+2026-03-22 16:49:20 - INFO - INTENT: Creating Security Groups for ALB and Web Tier
+2026-03-22 16:49:23 - INFO - SUCCESS: Security Groups created and rules attached.
+2026-03-22 16:49:23 - INFO - INTENT: Provisioning Application Load Balancer and Target Group
+2026-03-22 16:49:27 - INFO - WAIT: Waiting for Load Balancer to become active...
+2026-03-22 16:51:45 - INFO - SUCCESS: ALB and Target Group are active.
+2026-03-22 16:51:45 - INFO - INTENT: Deploying Launch Template and Auto Scaling Group
+2026-03-22 16:51:51 - INFO - SUCCESS: Compute layer live! Site accessible at http://aws-autoscale-optimizer-alb-1908482661.us-east-1.elb.amazonaws.com
+
+Step 3: Starting Automation Layer (Lambda/EventBridge)...
+2026-03-22 16:51:51 - INFO - INTENT: Discovering target ASG for project 'aws-autoscale-optimizer'
+2026-03-22 16:51:53 - INFO - SUCCESS: Found ASG 'aws-autoscale-optimizer-asg'
+2026-03-22 16:51:53 - INFO - INTENT: Configuring IAM Role 'aws-autoscale-optimizer-lambda-role' and Policies
+2026-03-22 16:51:55 - INFO - WAIT: Allowing IAM role propagation (15s)...
+2026-03-22 16:52:10 - INFO - SUCCESS: IAM permissions ready.
+2026-03-22 16:52:10 - INFO - INTENT: Packaging and deploying Lambda function 'aws-autoscale-optimizer-scheduler'
+2026-03-22 16:52:12 - INFO - SUCCESS: Lambda function deployed.
+2026-03-22 16:52:12 - INFO - INTENT: Configuring EventBridge Scheduler Rules
+2026-03-22 16:52:15 - INFO - IDEMPOTENCY ACTION: Updating EventBridge Targets with Config Payloads...
+2026-03-22 16:52:15 - INFO - SUCCESS: Automation layer successfully synced with config.yaml!
+(venv) root@Veronica:~/aws-autoscale-optimizer#
