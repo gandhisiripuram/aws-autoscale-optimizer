@@ -71,12 +71,32 @@ SQS (Dead Letter Queue) ← Errors → SNS Alerts
 3. Payload pushed to SQS  
 4. SNS notification sent  
 
-**Trigger Chaos Test:**
-```python
-from automation.scale_asg import simulate_iam_failure
+### How to Trigger Chaos Testing
 
-simulate_iam_failure()
+**Validation Objective:**  
+The chaos test verifies the safety pipeline by intentionally forcing a failure and ensuring the error propagates through SQS and SNS.
+
+**The Trigger Mechanism:**  
+Pass a boolean flag `chaos_test: true` in the Lambda input payload.
+
+**Simulated Failure:**  
+When triggered, the function attempts to update a non-existent Auto Scaling Group named `fake-asg-for-testing`, causing an AWS `ClientError`.
+
+**Sample Test Payload:**
+```json
+{
+  "asg_name": "aws-autoscale-optimizer-asg",
+  "min_size": 1,
+  "max_size": 2,
+  "desired_capacity": 1,
+  "chaos_test": true
+}
 ```
+
+**Expected Recovery Flow:**
+- Lambda catches the `ClientError`  
+- Error notification is sent to SNS  
+- Original event payload is pushed to SQS for redrive/analysis  
 
 ---
 
@@ -152,6 +172,73 @@ Logs sourced from: `screenshots/teardown_logs.txt`
 
 **Architecture Diagram:**  
 ![Architecture](screenshots/architecture.png)
+
+---
+
+## Chaos Test Validation
+
+This section demonstrates the successful validation of the fault-tolerance pipeline by intentionally injecting a failure into the system.
+
+### Test Input (Lambda Payload)
+
+The following payload was manually sent to the Lambda function to trigger the chaos test:
+
+```json
+{
+  "asg_name": "aws-autoscale-optimizer-asg",
+  "min_size": 1,
+  "max_size": 2,
+  "desired_capacity": 1,
+  "chaos_test": true
+}
+```
+
+### Validation Objective
+
+To verify that the system gracefully handles failures and correctly routes errors through the alerting and recovery pipeline (SNS + SQS).
+
+### Simulated Failure
+
+- The `chaos_test` flag forces the Lambda function to target a non-existent Auto Scaling Group:
+  `fake-asg-for-testing`
+- This triggers an AWS `ClientError`, simulating a real-world failure scenario.
+
+### Observed System Behavior
+
+#### 1. Lambda Execution (Failure Captured)
+- Lambda detects `chaos_test: true`
+- Attempts invalid ASG update
+- Exception is caught without crashing the function
+
+#### 2. SNS Alert Triggered
+- Error notification successfully published to SNS
+- Confirms real-time alerting mechanism is functional
+
+![SNS Alert](screenshots/sns.png)
+
+#### 3. SQS Message Captured
+- Original failed payload pushed to SQS queue
+- Enables retry, debugging, and audit workflows
+
+![SQS DLQ](screenshots/sqs.png)
+
+### End-to-End Validation Flow
+
+1. Chaos payload sent to Lambda  
+2. Lambda triggers intentional failure  
+3. Error caught via exception handling  
+4. SNS sends alert notification  
+5. SQS stores failed event for recovery  
+
+### Outcome
+
+The system successfully demonstrates:
+- Resilient error handling under failure conditions  
+- Reliable alerting via SNS  
+- Durable message capture using SQS  
+- No data loss during failure scenarios  
+
+This validates the robustness of the event-driven architecture and its readiness for production-grade fault tolerance.
 
 ---
 
