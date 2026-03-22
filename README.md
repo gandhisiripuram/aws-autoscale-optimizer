@@ -1,9 +1,3 @@
-Here is the complete text for your `README.md`, including the new section on chaos testing/fault tolerance and a dedicated section at the bottom with the resume bullet points for recruiters to see.
-
-I have removed the code block enclosures so you can copy everything from the `# AWS Auto-Scale Optimizer` title down to the bottom and paste it directly into GitHub\!
-
------
-
 # AWS Auto-Scale Optimizer
 
 A Python/Boto3 infrastructure-as-code tool that deploys, dynamically scales, and cleanly destroys a secure AWS web architecture using EventBridge and Lambda.
