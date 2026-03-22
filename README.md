@@ -23,7 +23,7 @@ Safety mechanisms included:
 ## Architecture
 
 ### Architecture Diagram
-![Architecture](docs/screenshots/architecture.png)
+![Architecture](screenshots/architecture.png)
 
 ### High-Level Flow
 User Traffic → ALB → Target Group → EC2 (ASG in Private Subnets)  
@@ -70,6 +70,12 @@ Failure flow:
 3. Payload pushed to SQS
 4. SNS notification sent
 
+#### Trigger Chaos Test Example
+```python
+from automation.scale_asg import simulate_iam_failure
+simulate_iam_failure()
+```
+
 ### Idempotent Deployment
 - Safe re-execution of scripts
 - Prevents duplicate resource creation
@@ -80,6 +86,15 @@ Failure flow:
   - CIDR ranges
   - Instance types
   - Scaling schedules
+
+#### Sample `config.yaml`
+```yaml
+aws_region: us-east-1
+vpc_cidr: 10.0.0.0/16
+instance_type: t3.medium
+asg_min: 1
+asg_max: 3
+```
 
 ### Automated Teardown
 - Clean resource deletion using `main_destroy.py`
@@ -95,26 +110,26 @@ Failure flow:
 <details>
 <summary>Deployment Logs</summary>
 
-![Deployment Logs](docs/screenshots/deployment_logs.txt)
+![Deployment Logs](screenshots/deployment_logs.txt)
 
 </details>
 
 <details>
 <summary>Teardown Logs</summary>
 
-![Teardown Logs](docs/screenshots/teardown_logs.txt)
+![Teardown Logs](screenshots/teardown_logs.txt)
 
 </details>
 
 ### Screenshots
 **SQS Dead Letter Queue:**  
-![SQS DLQ](docs/screenshots/sqs.png)
+![SQS DLQ](screenshots/sqs.png)
 
 **SNS Notification:**  
-![SNS Alert](docs/screenshots/sns.png)
+![SNS Alert](screenshots/sns.png)
 
 **Architecture Diagram:**  
-![Architecture](docs/screenshots/architecture.png)
+![Architecture](screenshots/architecture.png)
 
 ---
 
@@ -139,8 +154,8 @@ aws-autoscale-optimizer/
 │   ├── scale_asg.py
 │   └── TearDownLambdaEvent.py
 │
-└── utils/
-    └── config_loader.py
+│── utils/
+│    └── config_loader.py
 └── screenshots/
     ├── deployment_logs.txt
     ├── teardown_logs.txt
@@ -166,6 +181,12 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Setup AWS Credentials
+Ensure you have authenticated your local environment with AWS using the CLI or environment variables:
+```bash
+aws configure
+```
+
 ### Configure
 Edit `config.yaml` and set required values:
 - AWS region
@@ -184,6 +205,11 @@ After execution:
 ```bash
 python main_destroy.py
 ```
+
+---
+
+## Design Decisions & Trade-offs
+While declarative tools like Terraform are standard for IaC, I intentionally built this using Python and Boto3 to gain a deeper, low-level understanding of AWS API interactions, dependency graphing during teardown, and imperative state handling.
 
 ---
 
