@@ -22,6 +22,9 @@ This project extends traditional infrastructure provisioning by integrating Even
 
 ## Architecture
 
+### Architecture Diagram
+![Architecture](screenshots/architecture.png)
+
 ### High-Level Flow
 
 User Traffic → ALB → Target Group → EC2 (ASG in Private Subnets)  
