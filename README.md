@@ -12,11 +12,15 @@ A Python/Boto3 Infrastructure-as-Code (IaC) project that deploys, dynamically sc
 
 ## Overview
 
-This project extends traditional infrastructure provisioning by integrating EventBridge and Lambda to dynamically scale workloads based on predefined schedules.
+This project provisions a secure, scalable AWS architecture using Python and Boto3. It implements a full **three-tier system**:
 
-**Safety mechanisms included:**
-- Failed scaling events routed to SQS (Dead Letter Queue)
-- Administrative alerts sent via SNS
+1. **Network Tier:** Multi-AZ VPC with public and private subnets, Internet Gateway, and NAT Gateways to provide a resilient, secure networking foundation.
+
+2. **Compute Tier:** Auto Scaling Groups of EC2 instances behind an Application Load Balancer, enabling dynamic scaling based on traffic or schedules.
+
+3. **Automation Tier:** Event-driven orchestration with EventBridge scheduling and Lambda functions for scaling logic. SQS dead-letter queues and SNS alerts ensure robust error handling and observability.
+
+The system dynamically scales workloads while maintaining fault tolerance, with safety mechanisms to handle failures gracefully and alert administrators.
 
 ---
 
@@ -36,29 +40,6 @@ EventBridge (Scheduled Triggers)
 SQS (Dead Letter Queue) ← Errors → SNS Alerts  
 
 ---
-
-## Architecture Breakdown
-
-### Network Layer
-- Multi-AZ VPC  
-- Public and Private Subnets  
-- Internet Gateway  
-- NAT Gateways  
-
-### Compute Layer
-- Application Load Balancer  
-- Target Groups  
-- Launch Templates  
-- Auto Scaling Group in private subnets  
-
-### Automation Layer
-- EventBridge (scheduled triggers)  
-- Lambda (scaling logic)  
-- SNS (notifications)  
-- SQS (dead-letter queue)  
-
----
-
 ## Key Features
 
 ### Fault Tolerance & Chaos Testing
@@ -73,16 +54,11 @@ SQS (Dead Letter Queue) ← Errors → SNS Alerts
 
 ### How to Trigger Chaos Testing
 
-**Validation Objective:**  
-The chaos test verifies the safety pipeline by intentionally forcing a failure and ensuring the error propagates through SQS and SNS.
+**Objective:** Verify the "Safety Net" pipeline by forcing a failure and confirming it is handled through SNS + SQS.
 
-**The Trigger Mechanism:**  
-Pass a boolean flag `chaos_test: true` in the Lambda input payload.
+**Trigger Mechanism:** Send a Lambda payload with `chaos_test: true`.
 
-**Simulated Failure:**  
-When triggered, the function attempts to update a non-existent Auto Scaling Group named `fake-asg-for-testing`, causing an AWS `ClientError`.
-
-**Sample Test Payload:**
+**Sample Payload:**
 ```json
 {
   "asg_name": "aws-autoscale-optimizer-asg",
@@ -93,22 +69,29 @@ When triggered, the function attempts to update a non-existent Auto Scaling Grou
 }
 ```
 
-**Expected Recovery Flow:**
-- Lambda catches the `ClientError`  
-- Error notification is sent to SNS  
-- Original event payload is pushed to SQS for redrive/analysis  
+**Expected Behavior:**
+- Lambda catches the simulated `ClientError`  
+- SNS sends an alert notification  
+- Original payload pushed to SQS for recovery or analysis  
+
+### Observed Validation
+
+**SNS Alert:**  
+![SNS Alert](screenshots/sns.png)
+
+**SQS Dead Letter Queue:**  
+![SQS DLQ](screenshots/sqs.png)
+
+This confirms that the event-driven architecture handles failures gracefully across all tiers.
 
 ---
+## Configuration Management
 
-### Idempotent Deployment
-- Safe re-execution of scripts  
-- Prevents duplicate resource creation  
-
----
-
-### Configuration Management
-- Centralized configuration via `config.yaml`  
-- Dynamically control infrastructure parameters  
+Centralized via `config.yaml` for:
+- AWS region  
+- CIDR ranges  
+- Instance types  
+- Scaling parameters  
 
 **Sample `config.yaml`:**
 ```yaml
@@ -120,22 +103,10 @@ asg_max: 3
 ```
 
 ---
-
-### Automated Teardown
-- Clean resource deletion using `main_destroy.py`  
-- Handles dependency order:
-  - Load balancer draining  
-  - Gateway detachment  
-- Prevents unnecessary AWS costs  
-
----
-
 ## Demonstration
 
 <details>
 <summary><strong>Deployment Logs</strong></summary>
-
-Logs sourced from: `screenshots/deployment_logs.txt`
 
 ```text
 [INFO] Starting AWS infrastructure deployment...
@@ -144,13 +115,10 @@ Logs sourced from: `screenshots/deployment_logs.txt`
 [INFO] ASG created and scaling to minimum capacity (1).
 [SUCCESS] Deployment complete.
 ```
-
 </details>
 
 <details>
 <summary><strong>Teardown Logs</strong></summary>
-
-Logs sourced from: `screenshots/teardown_logs.txt`
 
 ```text
 [INFO] Initiating teardown sequence...
@@ -159,89 +127,14 @@ Logs sourced from: `screenshots/teardown_logs.txt`
 [INFO] VPC and associated networking components removed.
 [SUCCESS] Teardown complete. No orphaned resources.
 ```
-
 </details>
 
 ### Screenshots
-
-**SQS Dead Letter Queue:**  
-![SQS DLQ](screenshots/sqs.png)
-
-**SNS Notification:**  
-![SNS Alert](screenshots/sns.png)
 
 **Architecture Diagram:**  
 ![Architecture](screenshots/architecture.png)
 
 ---
-
-## Chaos Test Validation
-
-This section demonstrates the successful validation of the fault-tolerance pipeline by intentionally injecting a failure into the system.
-
-### Test Input (Lambda Payload)
-
-The following payload was manually sent to the Lambda function to trigger the chaos test:
-
-```json
-{
-  "asg_name": "aws-autoscale-optimizer-asg",
-  "min_size": 1,
-  "max_size": 2,
-  "desired_capacity": 1,
-  "chaos_test": true
-}
-```
-
-### Validation Objective
-
-To verify that the system gracefully handles failures and correctly routes errors through the alerting and recovery pipeline (SNS + SQS).
-
-### Simulated Failure
-
-- The `chaos_test` flag forces the Lambda function to target a non-existent Auto Scaling Group:
-  `fake-asg-for-testing`
-- This triggers an AWS `ClientError`, simulating a real-world failure scenario.
-
-### Observed System Behavior
-
-#### 1. Lambda Execution (Failure Captured)
-- Lambda detects `chaos_test: true`
-- Attempts invalid ASG update
-- Exception is caught without crashing the function
-
-#### 2. SNS Alert Triggered
-- Error notification successfully published to SNS
-- Confirms real-time alerting mechanism is functional
-
-![SNS Alert](screenshots/sns.png)
-
-#### 3. SQS Message Captured
-- Original failed payload pushed to SQS queue
-- Enables retry, debugging, and audit workflows
-
-![SQS DLQ](screenshots/sqs.png)
-
-### End-to-End Validation Flow
-
-1. Chaos payload sent to Lambda  
-2. Lambda triggers intentional failure  
-3. Error caught via exception handling  
-4. SNS sends alert notification  
-5. SQS stores failed event for recovery  
-
-### Outcome
-
-The system successfully demonstrates:
-- Resilient error handling under failure conditions  
-- Reliable alerting via SNS  
-- Durable message capture using SQS  
-- No data loss during failure scenarios  
-
-This validates the robustness of the event-driven architecture and its readiness for production-grade fault tolerance.
-
----
-
 ## Project Structure
 
 ```text
@@ -274,18 +167,15 @@ aws-autoscale-optimizer/
 ```
 
 ---
-
 ## Getting Started
 
 ### Clone Repository
-
 ```bash
 git clone https://github.com/gandhisiripuram/aws-autoscale-optimizer.git
 cd aws-autoscale-optimizer
 ```
 
 ### Setup Environment
-
 ```bash
 python3 -m venv venv
 source venv/bin/activate
@@ -293,78 +183,49 @@ pip install -r requirements.txt
 ```
 
 ### Setup AWS Credentials
-Ensure your local environment is authenticated with AWS:
 
+**Recommended:** Use the AWS CLI and IAM roles (avoid hardcoding keys)
 ```bash
 aws configure
 ```
 
-Or via environment variables:
-
+Or via environment variables (less recommended):
 ```bash
 export AWS_ACCESS_KEY_ID=<your-access-key>
 export AWS_SECRET_ACCESS_KEY=<your-secret-key>
 export AWS_DEFAULT_REGION=us-east-1
 ```
 
----
-
 ### Configure
-Edit `config.yaml` and update:
+Edit `config.yaml` to set:
 - AWS region  
 - CIDR ranges  
 - Scaling parameters  
 
----
-
 ### Deploy
-
 ```bash
 python main_deploy.py
 ```
 
-After execution:
-- ALB DNS will be printed  
-- Access the application via browser  
-
----
-
 ### Destroy
-
 ```bash
 python main_destroy.py
 ```
 
 ---
-
 ## Design Decisions & Trade-offs
 
-While declarative tools like Terraform are standard for Infrastructure-as-Code, this project intentionally uses Python and Boto3 to:
-
+While Terraform is standard for IaC, this project uses Python + Boto3 to:
 - Gain low-level control over AWS API interactions  
-- Understand dependency graphing during teardown  
 - Implement imperative state handling  
+- Understand dependency graphing during teardown  
 - Build deeper intuition for AWS service orchestration  
 
-This approach trades off abstraction for control and learning depth.
-
 ---
-
 ## Skills Demonstrated
-
-### Infrastructure as Code
-- AWS automation using Python and Boto3  
-
-### Event-Driven Systems
-- Scheduled scaling with EventBridge and Lambda  
-
-### Resilience Engineering
-- IAM least privilege design  
-- SQS dead-letter queues and SNS alerting  
-
-### Engineering Practices
-- Idempotent scripting  
-- Modular architecture  
-- Dependency-aware teardown  
+- Infrastructure as Code with Python + Boto3  
+- Event-driven scaling using EventBridge + Lambda  
+- Resilience engineering via SQS + SNS  
+- Idempotent and modular deployment/teardown scripts
 
 ---
