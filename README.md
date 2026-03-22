@@ -40,6 +40,7 @@ EventBridge (Scheduled Triggers)
 SQS (Dead Letter Queue) ← Errors → SNS Alerts  
 
 ---
+
 ## Key Features
 
 ### Fault Tolerance & Chaos Testing
@@ -85,6 +86,70 @@ SQS (Dead Letter Queue) ← Errors → SNS Alerts
 This confirms that the event-driven architecture handles failures gracefully across all tiers.
 
 ---
+
+## Security & Least Privilege
+
+This project adheres to the **AWS Well-Architected Framework** by enforcing strict *least privilege* access at both the identity and network layers, ensuring minimal exposure in case of compromise.
+
+### IAM Least Privilege (Execution Layer)
+The Lambda function responsible for scaling does **not have broad administrative access**. Instead, it is governed by a **resource-based policy** that restricts its scope:
+
+- **Action Restriction:** The Lambda role is limited to only the API calls required for operation: `UpdateAutoScalingGroup`, `Publish` (SNS), and `SendMessage` (SQS).  
+- **Resource Pinning:** Permissions are scoped to specific ARNs, meaning the Lambda can only modify the project’s ASG and alert channels.  
+
+**Code Example (CreateLambdaEvent.py):**
+```python
+inline_policy_dict = {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow", 
+            "Action": ["autoscaling:UpdateAutoScalingGroup"], 
+            "Resource": asg_arn # Scoped to the specific ASG only
+        },
+        {
+            "Effect": "Allow", 
+            "Action": ["sns:Publish"], 
+            "Resource": "arn:aws:sns:us-east-1:590157535724:asg-alerts-topic"
+        },
+        {
+            "Effect": "Allow", 
+            "Action": ["sqs:SendMessage"], 
+            "Resource": "arn:aws:sqs:us-east-1:590157535724:asg-task-queue"
+        }
+    ]
+}
+```
+
+**Talking Points:**
+- **Blast Radius Reduction:** Even if Lambda is compromised, it cannot affect other AWS resources.  
+- **Identity as the Perimeter:** Temporary IAM credentials avoid hard-coded secrets.
+
+### Network Isolation (Traffic Layer)
+- **Private Subnet Hosting:** EC2 instances run in private subnets, preventing direct inbound access.  
+- **Security Group Referencing:** The Web Tier Security Group only allows traffic from the ALB Security Group.  
+- **Zero-Ingress for DB/Web:** NAT Gateways allow outbound updates without exposing instances to inbound traffic.  
+
+**Code Example (CreateCompute.py):**
+```python
+# The Web SG only listens to the ALB SG, not the internet
+ec2.authorize_security_group_ingress(
+    GroupId=web_sg, 
+    IpPermissions=[{
+        'IpProtocol': 'tcp', 
+        'FromPort': 80, 
+        'ToPort': 80, 
+        'UserIdGroupPairs': [{'GroupId': alb_sg}] # Source restricted to ALB
+    }]
+)
+```
+
+**Talking Points:**
+- **Defense in Depth:** Security is enforced at subnet, routing, and instance levels.  
+- **Zero Trust Networking:** Instances cannot be reached directly from the internet.
+
+---
+
 ## Configuration Management
 
 Centralized via `config.yaml` for:
@@ -103,6 +168,7 @@ asg_max: 3
 ```
 
 ---
+
 ## Demonstration
 
 <details>
@@ -115,6 +181,7 @@ asg_max: 3
 [INFO] ASG created and scaling to minimum capacity (1).
 [SUCCESS] Deployment complete.
 ```
+
 </details>
 
 <details>
@@ -127,14 +194,11 @@ asg_max: 3
 [INFO] VPC and associated networking components removed.
 [SUCCESS] Teardown complete. No orphaned resources.
 ```
+
 </details>
 
-### Screenshots
-
-**Architecture Diagram:**  
-![Architecture](screenshots/architecture.png)
-
 ---
+
 ## Project Structure
 
 ```text
@@ -167,6 +231,7 @@ aws-autoscale-optimizer/
 ```
 
 ---
+
 ## Getting Started
 
 ### Clone Repository
@@ -183,7 +248,6 @@ pip install -r requirements.txt
 ```
 
 ### Setup AWS Credentials
-
 **Recommended:** Use the AWS CLI and IAM roles (avoid hardcoding keys)
 ```bash
 aws configure
@@ -213,6 +277,7 @@ python main_destroy.py
 ```
 
 ---
+
 ## Design Decisions & Trade-offs
 
 While Terraform is standard for IaC, this project uses Python + Boto3 to:
@@ -222,10 +287,10 @@ While Terraform is standard for IaC, this project uses Python + Boto3 to:
 - Build deeper intuition for AWS service orchestration  
 
 ---
+
 ## Skills Demonstrated
 - Infrastructure as Code with Python + Boto3  
 - Event-driven scaling using EventBridge + Lambda  
 - Resilience engineering via SQS + SNS  
-- Idempotent and modular deployment/teardown scripts
-
----
+- Idempotent and modular deployment/teardown scripts  
+- Enterprise-grade security via IAM least-privilege and network isolation
